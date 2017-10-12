@@ -77,35 +77,9 @@ class PPersianRender
         $str = str_replace(['ي', "\0"], ['ی', ''], $str);
         $str = self::numeric_replace($str, true);
         $str = self::mb_str_split(trim($str));
-        $out = [];
+        $out = self::fa_letter_handler($str);
 
-        $i = 0;
-        while(isset($str[$i])) {
-            $l = $i - 1;
-            if(isset($str[$l])) {
-                $l = $str[$l];
-            } else {
-                $l = false;
-            }
-            $r = $i + 1;
-            if(isset($str[$r])) {
-                $r = $str[$r];
-            } else {
-                $r = false;
-            }
-            $out[] = self::howChar($l, $str[$i], $r);
-            $i++;
-        }
-
-        if($reverse) {
-            $out = array_reverse($out);
-            $text = implode('', $out);
-            $string =  self::en_letter_handler($text);
-        }else{
-            $string =  implode('', $out);
-        }
-
-        return self::numeric_replace($string);
+        return self::numeric_replace(implode('', $out));
     }
 
     /**
@@ -166,54 +140,67 @@ class PPersianRender
         return $char;
     }
 
-    private static function en_letter_handler($text){
-        $en_letters = 'abcdefghijklmnopqrstuvwxyz';
-        $en_letters .= 'ABCDEFGHIJKLMNOPQRESTUVWXYZ';
-        $en_letters .= '1234567890';
-
-
-
-        $delimiters = [' ', PHP_EOL];
-
-        $tmp = '';
-        $words = [];
-        for($i=0; $i<mb_strlen($text); $i++){
-            $item = mb_substr($text, $i, 1);
-            if(strpos($en_letters, $item)>-1 or (in_array($item, $delimiters) && !empty($tmp))){
-                $tmp .= $item;
-                continue;
-            }elseif(!empty($tmp)) {
-                $words[] = $tmp;
-                $tmp = '';
+    private static function fa_letter_handler($text){
+        $out = [];
+        for($i=0; $i<count($text);){
+            $fa = [];
+            while($i<count($text) && (!empty(self::$N_LIST[$text[$i]][0]) or (!preg_match('/[a-zA-Z0-9 ]/',$text[$i])))){
+                $fa[] = $text[$i];
+                $i++;
+                if($text[$i] == "‌") $text[$i] = " "; // half Space to space 
+                if(in_array($text[$i], ['(',')']))
+                    if($text[$i] == '(') $text[$i] = ')';
+                    else if($text[$i] == ')') $text[$i] = '(';
             }
+
+            $fa = self::Persanaized($fa);
+            $out = array_merge(array_reverse($fa), $out);
+
+            $en = [];
+            while($i<count($text) && (preg_match('/[a-zA-Z0-9 ]/', $text[$i]) or empty(self::$N_LIST[$text[$i]][0])))
+            {
+                $en[] = $text[$i];
+                $i++;
+            }
+            $out = array_merge($en, $out);      
         }
 
-        if(!empty($tmp)) {
-            $words[] = $tmp;
-        }
-
-        usort($words,'self::sort');
-
-        foreach ($words as $word) {
-            $reverse = self::reverse($word);
-            $text = str_replace($word, $reverse, $text);
-        }
-
-        return $text;
+        return $out;
     }
+ 
+    private static function Persanaized($str){
+        $out = [];
+        $i = 0;
+        while(isset($str[$i])) {
+            $l = $i - 1;
+            if(isset($str[$l])) {
+                $l = $str[$l];
+            } else {
+                $l = false;
+            }
+            $r = $i + 1;
+            if(isset($str[$r])) {
+                $r = $str[$r];
+            } else {
+                $r = false;
+            }
+            $out[] = self::howChar($l, $str[$i], $r);
+            $i++;
+        }
+        return $out;
+    }
+    
 
     private static function sort($a,$b){
         return strlen($b)-strlen($a);
     }
-
-
 
     private static function reverse($text){
         $reverse = '';
         for($i=mb_strlen($text); $i>=0; $i--){
             $reverse .= mb_substr($text, $i, 1);
         }
-        return $reverse.' ';
+        return $reverse.'';
     }
 
     /**
