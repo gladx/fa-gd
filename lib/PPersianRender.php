@@ -142,9 +142,10 @@ class PPersianRender
 
     private static function fa_letter_handler($text){
         $out = [];
-        for($i=0; $i<count($text);){
+        $i=0;
+        do {
             $fa = [];
-            while($i<count($text) && (!empty(self::$N_LIST[$text[$i]][0]) or (!preg_match('/[a-zA-Z0-9 ]/',$text[$i])))){
+            while($i<count($text) && (!empty(self::$N_LIST[$text[$i]][0]) or (!preg_match('/[a-zA-Z0-9]/',$text[$i])))){
                 $fa[] = $text[$i];
                 $i++;
                 if($text[$i] == "‌") $text[$i] = " "; // half Space to space 
@@ -156,14 +157,23 @@ class PPersianRender
             $fa = self::Persanaized($fa);
             $out = array_merge(array_reverse($fa), $out);
 
+            $spaces = [];
+            while($i<count($text) && preg_match('/[\s]/', $text[$i]))
+            {
+                $spaces[] = $text[$i];
+                $i++;
+            }
+            $out = array_merge($spaces, $out); 
+
             $en = [];
-            while($i<count($text) && (preg_match('/[a-zA-Z0-9 ]/', $text[$i]) or empty(self::$N_LIST[$text[$i]][0])))
+            while($i<count($text) && (preg_match('/[a-zA-Z0-9]/', $text[$i]) and empty(self::$N_LIST[$text[$i]][0])))
             {
                 $en[] = $text[$i];
                 $i++;
             }
-            $out = array_merge($en, $out);      
-        }
+            $out = array_merge($en, $out);  
+                 
+        } while($i<count($text));
 
         return $out;
     }
