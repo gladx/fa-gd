@@ -61,8 +61,8 @@ class PPersianRender
         'إ' => ['ﺈ', 'ﺈ', 'ﺇ'],
         'ئ' => ['ﺊ', 'ﺌ', 'ﺋ'],
         'ة' => ['ﺔ', 'ﺘ', 'ﺗ'],
-        '»' => ['« ', '', ' »'],
-        '«' => [' »', '', '« '],
+        // '»' => ['« ', '', ' »'],
+        // '«' => [' »', '', '« '],
     ];
 
     /**
@@ -79,7 +79,10 @@ class PPersianRender
         $str = self::mb_str_split(trim($str));
         $out = self::fa_letter_handler($str);
 
-        return self::numeric_replace(implode('', $out));
+        $str = self::numeric_replace(implode('', $out));
+        // Remove half spaces
+        $str = str_replace("‌", "", $str);
+        return $str;
     }
 
     /**
@@ -145,40 +148,48 @@ class PPersianRender
         $i=0;
         do {
             $fa = [];
-            while($i<count($text) && (!empty(self::$N_LIST[$text[$i]][0]) or (!preg_match('/[a-zA-Z0-9]/',$text[$i])))){
+            while($i<count($text) && !preg_match('/[a-zA-Z0-9]/',$text[$i])){
+                $text[$i] = self::reverseBrackets($text[$i]);
                 $fa[] = $text[$i];
                 $i++;
-                if($text[$i] == "‌") $text[$i] = " "; // half Space to space 
-                if(in_array($text[$i], ['(',')']))
-                    if($text[$i] == '(') $text[$i] = ')';
-                    else if($text[$i] == ')') $text[$i] = '(';
             }
 
-            $fa = self::Persanaized($fa);
+            $fa = self::Persianize($fa);
             $out = array_merge(array_reverse($fa), $out);
 
-            $spaces = [];
-            while($i<count($text) && preg_match('/[\s]/', $text[$i]))
-            {
-                $spaces[] = $text[$i];
-                $i++;
-            }
-            $out = array_merge($spaces, $out); 
-
             $en = [];
-            while($i<count($text) && (preg_match('/[a-zA-Z0-9]/', $text[$i]) and empty(self::$N_LIST[$text[$i]][0])))
-            {
-                $en[] = $text[$i];
-                $i++;
-            }
+            do {
+                while($i<count($text) && !preg_match('/[\s]/', $text[$i]) && empty(self::$N_LIST[$text[$i]][0]))
+                {
+                    $en[] = $text[$i];
+                    $i++;
+                }
+            } while(self::untilNextNotFa($text, $i, $en));
             $out = array_merge($en, $out);  
                  
         } while($i<count($text));
 
         return $out;
     }
- 
-    private static function Persanaized($str){
+
+    private static function untilNextNotFa($text, &$i, &$en){
+        $j = $i;
+        $xx = [];
+        while($j<count($text) && preg_match('/[\s]/', $text[$j]))
+        {
+            $xx[] = $text[$j];
+            $j++;
+        }
+
+        if(isset($text[$j]) && empty(self::$N_LIST[$text[$j]][0])) {
+            $en = array_merge($en, $xx);
+            $i = $j;
+            return true;
+        }
+        return false;
+    }
+
+    private static function Persianize($str){
         $out = [];
         $i = 0;
         while(isset($str[$i])) {
@@ -200,6 +211,19 @@ class PPersianRender
         return $out;
     }
     
+    private static function reverseBrackets($char){
+        switch($char){
+            case '(': return ')';
+            case ')': return '(';
+            case '[': return ']';
+            case ']': return '[';
+            case '<': return '>';
+            case '>': return '<';
+            case '«': return '»';
+            case '»': return '«';
+            default: return $char;
+        }
+    }
 
     private static function sort($a,$b){
         return strlen($b)-strlen($a);
