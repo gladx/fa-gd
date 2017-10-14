@@ -1,6 +1,6 @@
 # Fa-GD
 This Library forked from [PersianRender](https://github.com/mahmoud-eskandari/PersianRender)
-
+And Fork again from [patriotblog](https://github.com/patriotblog/fa-gd)
 
 # Installation
 
@@ -10,7 +10,7 @@ You can install this package using [composer](https://getcomposer.org). Add this
 
 ```
 "require": {
-	"patriotblog/fa-gd": "dev-master"
+	"gladx/fa-gd": "dev-master"
 }
 ```
 
@@ -23,10 +23,24 @@ You can install this package using [composer](https://getcomposer.org). Add this
 ```
 
 using in the Gd image
-```
+``` php
+<?php
+header('Content-Type: image/jpeg');
+$width = 1280;
+$height = 400;
+$canvas = imagecreate($width, $height);
 
-  $text  = \FaGD\PPersianRender::render('فارسی',true); //Reversed text for GD
-  
-  imagettftext ( $image ,  $size ,  $angle , $x , $y ,$color , $fontfile , $text );
-  
+$black = imagecolorallocate($canvas, 0, 0, 0);
+$font = './font-name.ttf';
+
+$text  = \FaGD\PPersianRender::render('فارسی',true); //Reversed text for GD
+imagettftext($canvas, 12, 0, 200, 200, $black, $font, "convert :" . $text);
+
+imagejpeg($canvas);
+// Clear Memory
+imagedestroy($canvas);
+
 ```
+#Test
+
+phpunit

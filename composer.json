@@ -1,14 +1,14 @@
 {
-    "name": "patriotblog/fa-gd",
+    "name": "gladx/fa-gd",
     "type": "library",
-    "description": "Fa-GD ,Free persian letter converter for using in php GD, etc. This Library forked from https://github.com/mahmoud-eskandari/PersianRender",
+    "description": "Fa-GD ,Free persian letter converter for using in php GD, etc. This Library forked from https://github.com/mahmoud-eskandari/PersianRender and fork again https://github.com/patriotblog/fa-gd", 
     "keywords": ["text","image","gd","render","persian","persianletter"],
-    "homepage": "https://github.com/patriotblog/fa-gd",
+    "homepage": "https://github.com/gladx/fa-gd",
     "license": "GNU",
     "authors": [
         {
-            "name": " MohammadAli Taebi",
-            "email": "taebi.ali@gmail.com"
+            "name": "Ali Yousefi",
+            "email": "Aliyousefi.tec@gmail.com"
         }
     ],
     "require": {

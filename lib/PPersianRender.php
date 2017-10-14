@@ -1,6 +1,7 @@
 <?php
 
 namespace FaGD;
+
 /**
  * The GNU License (GNU v 3.0)
  *
@@ -71,14 +72,13 @@ class PPersianRender
      * @param bool $reverse
      * @return string
      */
-    public static function render($str, $reverse = false)
+    public static function render($str, $reverse = true)
     {
         //
         $str = str_replace(['ي', "\0"], ['ی', ''], $str);
         $str = self::numeric_replace($str, true);
         $str = self::mb_str_split(trim($str));
-        $out = self::fa_letter_handler($str);
-
+        $out = self::fa_letter_handler($str, $reverse);
         $str = self::numeric_replace(implode('', $out));
         // Remove half spaces
         $str = str_replace("‌", "", $str);
@@ -96,7 +96,7 @@ class PPersianRender
         $f = array('۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '۰');
         $t = array('1', '2', '3', '4', '5', '6', '7', '8', '9', '0');
 
-        if($persian_to_latin) {
+        if ($persian_to_latin) {
             return str_replace($f, $t, $val);
         }
 
@@ -112,76 +112,87 @@ class PPersianRender
      */
     private static function howChar($l, $char, $r)
     {
-        if(!isset(self::$N_LIST[$char])) {
+        if (!isset(self::$N_LIST[$char])) {
             return $char;
         }
         $Result = 0;
-        if(
-            !empty($r) && array_key_exists($r, self::$N_LIST)
+        if (!empty($r) && array_key_exists($r, self::$N_LIST)
             && !empty(self::$N_LIST[$char][2])
             && !empty(self::$N_LIST[$r][0])
         ) {
             $Result += 4;
         }
-        if(
-            !empty($l)
+        if (!empty($l)
             && array_key_exists($l, self::$N_LIST)
             && !empty(self::$N_LIST[$char][0])
             && !empty(self::$N_LIST[$l][2])
         ) {
             $Result += 2;
         }
-        if($Result === 6) {
+        if ($Result === 6) {
             return self::$N_LIST[$char][1];
         }
-        if($Result === 4) {
+        if ($Result === 4) {
             return self::$N_LIST[$char][2];
         }
-        if($Result === 2) {
+        if ($Result === 2) {
             return self::$N_LIST[$char][0];
         }
         return $char;
     }
 
-    private static function fa_letter_handler($text){
+    private static function fa_letter_handler($text, $reverse)
+    {
         $out = [];
         $i=0;
         do {
             $fa = [];
-            while($i<count($text) && !preg_match('/[a-zA-Z0-9]/',$text[$i])){
-                $text[$i] = self::reverseBrackets($text[$i]);
-                $fa[] = $text[$i];
-                $i++;
-            }
+            do {
+                while ($i<count($text) && !empty(self::$N_LIST[$text[$i]][0])) {
+                    $text[$i] = self::reverseBrackets($text[$i]);
+                    $fa[] = $text[$i];
+                    $i++;
+                }
+            } while (self::untilNextNotEn($text, $i, $fa));
 
             $fa = self::Persianize($fa);
-            $out = array_merge(array_reverse($fa), $out);
+            if ($reverse) {
+                $fa = array_reverse($fa);
+            }
+            $out = array_merge($fa, $out);
+
+            $other = [];
+            while ($i<count($text) && !preg_match('/[a-zA-Z0-9]/', $text[$i]) &&  empty(self::$N_LIST[$text[$i]][0])) {
+                $other[] = $text[$i];
+                $i++;
+            }
+            $out = array_merge($other, $out);
 
             $en = [];
             do {
-                while($i<count($text) && !preg_match('/[\s]/', $text[$i]) && empty(self::$N_LIST[$text[$i]][0]))
-                {
+                while ($i<count($text) && preg_match('/[a-zA-Z0-9]/', $text[$i])) {
                     $en[] = $text[$i];
                     $i++;
                 }
-            } while(self::untilNextNotFa($text, $i, $en));
-            $out = array_merge($en, $out);  
-                 
-        } while($i<count($text));
+            } while (self::untilNextNotFa($text, $i, $en));
+            $out = array_merge($en, $out);
+        } while ($i<count($text));
+
+        
 
         return $out;
     }
 
-    private static function untilNextNotFa($text, &$i, &$en){
+    private static function untilNextNotFa($text, &$i, &$en)
+    {
         $j = $i;
         $xx = [];
-        while($j<count($text) && preg_match('/[\s]/', $text[$j]))
-        {
+        while ($j<count($text) && empty(self::$N_LIST[$text[$j]][0])) {
             $xx[] = $text[$j];
             $j++;
         }
 
-        if(isset($text[$j]) && empty(self::$N_LIST[$text[$j]][0])) {
+        if (!empty($xx) && (!isset($text[$j]) or (isset($text[$j]) && empty(self::$N_LIST[$text[$j]][0])))) {
             $en = array_merge($en, $xx);
             $i = $j;
             return true;
@@ -189,18 +200,37 @@ class PPersianRender
         return false;
     }
 
-    private static function Persianize($str){
+    private static function untilNextNotEN($text, &$i, &$fa)
+    {
+        $j = $i;
+        $xx = [];
+        while ($j<count($text) && !preg_match('/[a-zA-Z0-9]/', $text[$j]) && empty(self::$N_LIST[$text[$j]][0])) {
+            $text[$j] = self::reverseBrackets($text[$j]);
+            $xx[] = $text[$j];
+            $j++;
+        }
+
+        if (!empty($xx) && (!isset($text[$j]) or isset($text[$j]) && !preg_match('/[a-zA-Z0-9]/', $text[$j]))) {
+            $fa = array_merge($fa, $xx);
+            $i = $j;
+            return true;
+        }
+        return false;
+    }
+
+    private static function Persianize($str)
+    {
         $out = [];
         $i = 0;
-        while(isset($str[$i])) {
+        while (isset($str[$i])) {
             $l = $i - 1;
-            if(isset($str[$l])) {
+            if (isset($str[$l])) {
                 $l = $str[$l];
             } else {
                 $l = false;
             }
             $r = $i + 1;
-            if(isset($str[$r])) {
+            if (isset($str[$r])) {
                 $r = $str[$r];
             } else {
                 $r = false;
@@ -211,27 +241,39 @@ class PPersianRender
         return $out;
     }
     
-    private static function reverseBrackets($char){
-        switch($char){
-            case '(': return ')';
-            case ')': return '(';
-            case '[': return ']';
-            case ']': return '[';
-            case '<': return '>';
-            case '>': return '<';
-            case '«': return '»';
-            case '»': return '«';
-            default: return $char;
+    private static function reverseBrackets($char)
+    {
+        switch ($char) {
+            case '(':
+                return ')';
+            case ')':
+                return '(';
+            case '[':
+                return ']';
+            case ']':
+                return '[';
+            case '<':
+                return '>';
+            case '>':
+                return '<';
+            case '«':
+                return '»';
+            case '»':
+                return '«';
+            default:
+                return $char;
         }
     }
 
-    private static function sort($a,$b){
+    private static function sort($a, $b)
+    {
         return strlen($b)-strlen($a);
     }
 
-    private static function reverse($text){
+    private static function reverse($text)
+    {
         $reverse = '';
-        for($i=mb_strlen($text); $i>=0; $i--){
+        for ($i=mb_strlen($text); $i>=0; $i--) {
             $reverse .= mb_substr($text, $i, 1);
         }
         return $reverse.'';
@@ -243,17 +285,16 @@ class PPersianRender
      * @param int $string_length
      * @return array
      */
-	public static function mb_str_split($string, $string_length = 1)
+    public static function mb_str_split($string, $string_length = 1)
     {
-        if(mb_strlen($string) > $string_length || !$string_length) {
+        if (mb_strlen($string) > $string_length || !$string_length) {
             do {
                 $parts[] = mb_substr($string, 0, $string_length);
                 $string = mb_substr($string, $string_length);
-            } while(!empty($string) || (strlen($string) > 0));
+            } while (!empty($string) || (strlen($string) > 0));
         } else {
             $parts = array($string);
         }
         return $parts;
     }
-
 }
